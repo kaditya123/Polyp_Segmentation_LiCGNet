@@ -1,0 +1,1 @@
+The trained .pth, variant specific CGNet model will be stored within the KvasirSEG_CVCClinic folder
