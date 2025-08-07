@@ -222,7 +222,7 @@ if __name__ == '__main__':
     parser.add_argument('--resume', type = str, default = './checkpoint/KvasirSeg_CVCClinic/CGNet_M3N21bs8gpu1_ontrain/model_250.pth', 
                          help = "use this file to load last checkpoint for testing")
     parser.add_argument('--classes', type = int, default = 2, 
-                         help = "the number of classes in the dataset. 19 and 11 for cityscapes and camvid, respectively")
+                         help = "the number of classes in the dataset. 2 classes for all the datasets respectively")
     parser.add_argument('--inform_data_file', default = "dataset/Polyp_processed_1_0_data/polyp_inform.pkl", 
                          help = "storing classes weights, mean and std")
     parser.add_argument('--M', type = int, default = 3,  help = "the number of block in stage 2")
