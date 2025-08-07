@@ -183,7 +183,7 @@ def test_model(args):
     #load test set
     train_transform= transforms.Compose([
         transforms.ToTensor()])
-    testLoader = data.DataLoader(KvasirSEG_ClinicDB_Test_dataset(args.data_dir, args.test_data_list,f_scale=1,  mean= datas['mean']),
+    testLoader = data.DataLoader(KvasirSEG_ClinicDB_Test_dataset(args.data_dir, args.test_data_list,  mean= datas['mean']),
                                   batch_size = args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
 
     if args.resume:
