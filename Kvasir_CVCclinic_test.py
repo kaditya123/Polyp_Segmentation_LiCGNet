@@ -78,7 +78,7 @@ def test(args, test_loader, model, criterion):
     num_images = 0
 
      # FLOPS Calculation (using the first batch)
-    input_sample, _, _, _ = next(iter(test_loader))
+    input_sample, _, _ = next(iter(test_loader))
     input_sample = Variable(input_sample).cuda()  # Change to `.cuda()` if using GPU
     macs, params = profile(model, inputs=(input_sample,))
     flops = macs * 2  # MACs are half of FLOPs
