@@ -120,7 +120,7 @@ class KvasirSEG_ClinicDB_Val_dataset(data.Dataset):
         for name in self.img_ids:
             img_file = osp.join(self.root, name.split()[0])
             label_file = osp.join(self.root, name.split()[1])
-            image_name = name.strip().split()[0].strip().split('/',1)[1].split('.')[0]
+            image_name = name.strip().split()[0].strip().split('/', 1)[1].split('.')[0]
             self.files.append({
                 "img": img_file,
                 "label": label_file,
@@ -170,7 +170,7 @@ class KvasirSEG_ClinicDB_Test_dataset(data.Dataset):
 
             img_file = osp.join(self.root, name.split()[0])
             print(img_file)
-            image_name = name.strip().split()[0].strip().split('/',3)[3].split('.')[0]
+            image_name = name.strip().split()[0].strip().split('/', 1)[1].split('.')[0]
             print(image_name)
             self.files.append({
                 "img": img_file,
