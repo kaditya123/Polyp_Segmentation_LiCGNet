@@ -25,7 +25,7 @@ from utils.loss import CrossEntropyLoss2d
 from utils.metric import calculate_metrics
 from utils.convert_state import convert_state_dict
 from dataset.Kvasir_CVCclinic import Kvasir_CVCclinic_train_inform 
-from dataset.Kvasir_CVCclinic import KvasirSEG_ClinicDB_Test_dataset
+from dataset.Kvasir_CVCclinic import KvasirSEG_ClinicDB_Val_dataset
 
 
 def visualize_prediction(image, ground_truth_mask, predicted_mask, image_name):
@@ -78,7 +78,7 @@ def test(args, test_loader, model, criterion):
     num_images = 0
 
      # FLOPS Calculation (using the first batch)
-    input_sample, _, _ = next(iter(test_loader))
+    input_sample, _, _, _ = next(iter(test_loader))
     input_sample = Variable(input_sample).cuda()  # Change to `.cuda()` if using GPU
     macs, params = profile(model, inputs=(input_sample,))
     flops = macs * 2  # MACs are half of FLOPs
@@ -183,7 +183,7 @@ def test_model(args):
     #load test set
     train_transform= transforms.Compose([
         transforms.ToTensor()])
-    testLoader = data.DataLoader(KvasirSEG_ClinicDB_Test_dataset(args.data_dir, args.test_data_list,  mean= datas['mean']),
+    testLoader = data.DataLoader(KvasirSEG_ClinicDB_Val_dataset(args.data_dir, args.test_data_list,  mean= datas['mean']),
                                   batch_size = args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
 
     if args.resume:
