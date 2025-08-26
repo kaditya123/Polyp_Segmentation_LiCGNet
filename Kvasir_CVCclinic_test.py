@@ -16,6 +16,7 @@ from argparse import ArgumentParser
 from torch.autograd import Variable
 import torch.backends.cudnn as cudnn
 import torchvision.transforms as transforms
+import cv2
 
 #user
 from model import CGNet
@@ -37,23 +38,79 @@ def visualize_prediction(image, ground_truth_mask, predicted_mask, image_name):
     - ground_truth_mask: Ground truth segmentation mask
     - predicted_mask: Predicted segmentation mask
     """
+    # Ensure numpy arrays
+    image = np.array(image)
+    gt = np.array(ground_truth_mask)
+    pred = np.array(predicted_mask)
+
+    # Restore / normalize image for display
+    # If image appears mean-subtracted or float, normalize to [0,255]
+    if image.dtype != np.uint8:
+        im_min, im_max = image.min(), image.max()
+        if im_max - im_min > 1e-6:
+            image_disp = (image - im_min) / (im_max - im_min)
+        else:
+            image_disp = np.clip(image, 0.0, 1.0)
+        image_disp = (image_disp * 255.0).astype(np.uint8)
+    else:
+        image_disp = image.copy()
+
+    # If single channel image, convert to RGB for consistent display
+    if image_disp.ndim == 2:
+        image_disp = cv2.cvtColor(image_disp, cv2.COLOR_GRAY2RGB)
+    elif image_disp.shape[2] == 3:
+        # Ensure channel order is RGB for matplotlib (dataset should already provide RGB)
+        pass
+
+    # Prepare masks: make sure they are 2D and binary (0 or 255)
+    if gt.ndim == 3:
+        gt = gt[:, :, 0]
+    if pred.ndim == 3:
+        pred = pred[:, :, 0]
+
+    # Binarize masks: convert to 0/255
+    if gt.max() > 1:
+        gt_disp = (gt > (np.max(gt) / 2)).astype(np.uint8) * 255
+    else:
+        gt_disp = (gt > 0.5).astype(np.uint8) * 255
+
+    if pred.max() > 1:
+        pred_disp = (pred > (np.max(pred) / 2)).astype(np.uint8) * 255
+    else:
+        pred_disp = (pred > 0.5).astype(np.uint8) * 255
+
+    # Resize masks to match image size if necessary
+    h, w = image_disp.shape[:2]
+    if gt_disp.shape != (h, w):
+        gt_disp = cv2.resize(gt_disp, (w, h), interpolation=cv2.INTER_NEAREST)
+    if pred_disp.shape != (h, w):
+        pred_disp = cv2.resize(pred_disp, (w, h), interpolation=cv2.INTER_NEAREST)
+
+    # Create an overlay of the predicted mask on the image for clearer visualization
+    overlay = image_disp.copy()
+    if overlay.dtype != np.uint8:
+        overlay = (np.clip(overlay, 0, 255)).astype(np.uint8)
+    if overlay.ndim == 2:
+        overlay = cv2.cvtColor(overlay, cv2.COLOR_GRAY2RGB)
+
+    # Color the prediction in red with alpha blending
+    red = np.array([255, 0, 0], dtype=np.uint8)
+    mask_idx = pred_disp > 127
+    overlay[mask_idx] = (overlay[mask_idx].astype(np.float32) * 0.5 + red.astype(np.float32) * 0.5).astype(np.uint8)
+
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    
-    # Display the image
-    axes[0].imshow(image)
+    axes[0].imshow(image_disp)
     axes[0].set_title('Image')
     axes[0].axis('off')
-    
-    # Display the ground truth mask
-    axes[1].imshow(ground_truth_mask, cmap='gray', vmin=0, vmax=1)  # Assuming 21 classes, adjust colormap accordingly
+
+    axes[1].imshow(gt_disp, cmap='gray')
     axes[1].set_title('Ground Truth Mask')
     axes[1].axis('off')
-    
-    # Display the predicted mask
-    axes[2].imshow(predicted_mask, cmap='gray', vmin=0, vmax=1)  # Assuming 21 classes, adjust colormap accordingly
-    axes[2].set_title('Predicted Mask')
+
+    axes[2].imshow(overlay)
+    axes[2].set_title('Predicted Mask (overlay)')
     axes[2].axis('off')
-    
+
     plt.tight_layout()
     plt.show()
 
