@@ -285,7 +285,7 @@ if __name__ == '__main__':
     # Creating ArgumentParser object and define arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', default = "CGNet", help = "model name: Context Guided Network (CGNet)")
-    parser.add_argument('--dataset', default = "KvasirSeg_CVCClinic", help = "dataset: KvasirSeg_CVCClinic")
+    parser.add_argument('--dataset', default = "KvasirSeg_CVCClinic_(train)", help = "dataset: KvasirSeg_CVCClinic (considering 'train' set only as a default, 'train + val' set could also be used)")
     parser.add_argument('--ignore_label', type = int,  default = -1, help = "nClass")
     parser.add_argument('--data_dir', default = "dataset/Polyp_processed_1_0_data", help ='data directory')
     parser.add_argument('--dataset_list', default = "Polyp_train_list.txt",
@@ -293,7 +293,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--train_data_list', default = "dataset/Polyp_processed_1_0_data/Polyp_train_list.txt", help = "train set")
     parser.add_argument('--train_type', type = str, default = "ontrain", 
-                         help = "ontrain for training on train set, ontrain for training on 'train' set")
+                         help = " 'ontrain' for training on train set, 'ontrain+val' for training on train+val set, 'onval' for training on val set")
 
     parser.add_argument('--max_epochs', type = int, default = 2, help = "the number of epochs: 250 for 'train' set")
     parser.add_argument('--val_data_list', default = "dataset/Polyp_processed_1_0_data/Polyp_val_list.txt", help = "val set")
