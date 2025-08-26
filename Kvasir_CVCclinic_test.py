@@ -85,31 +85,35 @@ def test(args, test_loader, model, criterion):
     print(f"FLOPs: {flops:.2e}, Params: {params}")
     
     for i, (input, label, size, name) in enumerate(test_loader):
-        input_var = Variable(input, volatile=True).cuda()   ### change to cuda in GPU usage
-        start_time = time.time()  # Start measuring time for latency
+        input_var = input.cuda()   # Variable wrapper not needed in PyTorch >0.4
+        start_time = time.time()
         
-        output = model(input_var)
-        torch.cuda.synchronize() 
+        output = model(input_var)  # (B, C, H, W)
+        torch.cuda.synchronize()
         
-        end_time = time.time()   # End measuring time for latency
-        latency = end_time - start_time   # Calculate latency and accumulate total inference time
+        end_time = time.time()
+        latency = end_time - start_time
         total_inference_time += latency
-        num_images += input.size(0)  # Batch size
-        
-        output= output.cpu().data[0].numpy()
-        gt = np.asarray(label[0].numpy(), dtype = np.uint8)
-        output= output.transpose(1,2,0)
-        output= np.asarray(np.argmax(output, axis=2), dtype=np.uint8)
-        data_list.append( [gt.flatten(), output.flatten()])
-        
-        all_preds.extend(output.flatten())
+        num_images += input.size(0)
+
+        # ---- Process ground truth ----
+        gt = label[0].cpu().numpy().astype(np.uint8)   # (H, W)
+
+        # ---- Process prediction ----
+        pred = output[0].cpu().detach().numpy()        # (C, H, W)
+        pred = np.argmax(pred, axis=0).astype(np.uint8)  # (H, W)
+
+        # For metrics
+        data_list.append([gt.flatten(), pred.flatten()])
+        all_preds.extend(pred.flatten())
         all_labels.extend(gt.flatten())
-        
-         # Visualize the prediction
+
+        # ---- Visualization ----
         if i < 11:
-            image = input[0].numpy().transpose(1, 2, 0)  # Assuming input is in the format (C, H, W)
+            image = input[0].cpu().numpy().transpose(1, 2, 0)  # (C,H,W) → (H,W,C)
             print(f"Visualizing: Image: {name[0]}, Mask: {name[0]}")
-            visualize_prediction(image, gt, output, name[0])
+            visualize_prediction(image, gt, pred, name[0])
+
         
     meanIoU, per_class_iu= get_iou(data_list, args.classes)
     precision, recall, f1_score, accuracy = calculate_metrics(all_labels, all_preds)
