@@ -38,81 +38,52 @@ def visualize_prediction(image, ground_truth_mask, predicted_mask, image_name):
     - ground_truth_mask: Ground truth segmentation mask
     - predicted_mask: Predicted segmentation mask
     """
-    # Ensure numpy arrays
+    # Minimal, robust display
     image = np.array(image)
     gt = np.array(ground_truth_mask)
     pred = np.array(predicted_mask)
 
-    # Restore / normalize image for display
-    # If image appears mean-subtracted or float, normalize to [0,255]
+    # Normalize image to uint8 [0,255]
     if image.dtype != np.uint8:
-        im_min, im_max = image.min(), image.max()
-        if im_max - im_min > 1e-6:
-            image_disp = (image - im_min) / (im_max - im_min)
-        else:
-            image_disp = np.clip(image, 0.0, 1.0)
-        image_disp = (image_disp * 255.0).astype(np.uint8)
+        im = image.astype(np.float32)
+        im = (im - im.min()) / max(1e-6, (im.max() - im.min()))
+        image_disp = (im * 255).astype(np.uint8)
     else:
-        image_disp = image.copy()
+        image_disp = image
 
-    # If single channel image, convert to RGB for consistent display
+    # If channels-first, convert to HWC
+    if image_disp.ndim == 3 and image_disp.shape[0] in (1, 3) and image_disp.shape[0] != image_disp.shape[2]:
+        image_disp = np.transpose(image_disp, (1, 2, 0))
+
     if image_disp.ndim == 2:
         image_disp = cv2.cvtColor(image_disp, cv2.COLOR_GRAY2RGB)
-    elif image_disp.shape[2] == 3:
-        # Ensure channel order is RGB for matplotlib (dataset should already provide RGB)
-        pass
 
-    # Prepare masks: make sure they are 2D and binary (0 or 255)
+    # Prepare binary masks (0 or 255)
     if gt.ndim == 3:
         gt = gt[:, :, 0]
     if pred.ndim == 3:
         pred = pred[:, :, 0]
+    gt_mask = (gt > (0 if gt.max() <= 1 else (gt.max() / 2))).astype(np.uint8) * 255
+    pred_mask = (pred > (0 if pred.max() <= 1 else (pred.max() / 2))).astype(np.uint8) * 255
 
-    # Binarize masks: convert to 0/255
-    if gt.max() > 1:
-        gt_disp = (gt > (np.max(gt) / 2)).astype(np.uint8) * 255
-    else:
-        gt_disp = (gt > 0.5).astype(np.uint8) * 255
+    H, W = image_disp.shape[:2]
+    if gt_mask.shape != (H, W):
+        gt_mask = cv2.resize(gt_mask, (W, H), interpolation=cv2.INTER_NEAREST)
+    if pred_mask.shape != (H, W):
+        pred_mask = cv2.resize(pred_mask, (W, H), interpolation=cv2.INTER_NEAREST)
 
-    if pred.max() > 1:
-        pred_disp = (pred > (np.max(pred) / 2)).astype(np.uint8) * 255
-    else:
-        pred_disp = (pred > 0.5).astype(np.uint8) * 255
-
-    # Resize masks to match image size if necessary
-    h, w = image_disp.shape[:2]
-    if gt_disp.shape != (h, w):
-        gt_disp = cv2.resize(gt_disp, (w, h), interpolation=cv2.INTER_NEAREST)
-    if pred_disp.shape != (h, w):
-        pred_disp = cv2.resize(pred_disp, (w, h), interpolation=cv2.INTER_NEAREST)
-
-    # Create an overlay of the predicted mask on the image for clearer visualization
+    # Overlay prediction in red
     overlay = image_disp.copy()
-    if overlay.dtype != np.uint8:
-        overlay = (np.clip(overlay, 0, 255)).astype(np.uint8)
-    if overlay.ndim == 2:
-        overlay = cv2.cvtColor(overlay, cv2.COLOR_GRAY2RGB)
-
-    # Color the prediction in red with alpha blending
     red = np.array([255, 0, 0], dtype=np.uint8)
-    mask_idx = pred_disp > 127
-    overlay[mask_idx] = (overlay[mask_idx].astype(np.float32) * 0.5 + red.astype(np.float32) * 0.5).astype(np.uint8)
+    idx = pred_mask > 127
+    overlay[idx] = (overlay[idx].astype(np.float32) * 0.5 + red.astype(np.float32) * 0.5).astype(np.uint8)
 
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    axes[0].imshow(image_disp)
-    axes[0].set_title('Image')
-    axes[0].axis('off')
-
-    axes[1].imshow(gt_disp, cmap='gray')
-    axes[1].set_title('Ground Truth Mask')
-    axes[1].axis('off')
-
-    axes[2].imshow(overlay)
-    axes[2].set_title('Predicted Mask (overlay)')
-    axes[2].axis('off')
-
-    plt.tight_layout()
-    plt.show()
+    fig, axes = plt.subplots(1, 4, figsize=(18, 5))
+    axes[0].imshow(image_disp); axes[0].set_title('Image'); axes[0].axis('off')
+    axes[1].imshow(gt_mask, cmap='gray'); axes[1].set_title('GT'); axes[1].axis('off')
+    axes[2].imshow(pred_mask, cmap='gray'); axes[2].set_title('Pred'); axes[2].axis('off')
+    axes[3].imshow(overlay); axes[3].set_title('Overlay'); axes[3].axis('off')
+    plt.tight_layout(); plt.show()
 
 
 def test(args, test_loader, model, criterion):
