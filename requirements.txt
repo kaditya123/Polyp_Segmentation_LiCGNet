@@ -3,8 +3,8 @@ pandas
 matplotlib
 opencv-python
 scikit-learn
-torch
-torchvision
+torch        # install this based on the CUDA or CPU based testing
+torchvision  
 Pillow
 tqdm
 thop

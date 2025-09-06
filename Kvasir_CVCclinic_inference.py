@@ -1,7 +1,9 @@
 import os
 import sys
+import cv2
 import time
 import torch
+import gc
 import pickle
 import timeit
 import random
@@ -10,81 +12,22 @@ import torch.nn as nn
 import os.path as osp
 from thop import profile
 from torch.utils import data
-import matplotlib.pyplot as plt
-from torch.autograd import Variable
 from argparse import ArgumentParser
-from torch.autograd import Variable
 import torch.backends.cudnn as cudnn
 import torchvision.transforms as transforms
-import cv2
 
-#user
 from model import CGNet
-from utils.metric import get_iou
 from utils.modeltools import netParams
 from utils.loss import CrossEntropyLoss2d
+from utils.metric import ConfusionMatrix
 from utils.metric import calculate_metrics
+from vis_prediction import visualize_prediction
 from utils.convert_state import convert_state_dict
 from dataset.Kvasir_CVCclinic import Kvasir_CVCclinic_train_inform 
 from dataset.Kvasir_CVCclinic import KvasirSEG_ClinicDB_Val_dataset
 
-
-def visualize_prediction(image, ground_truth_mask, predicted_mask, image_name):
-    """
-    Function to visualize the image, ground truth mask, and predicted mask.
-    
-    Args:
-    - image: Input image
-    - ground_truth_mask: Ground truth segmentation mask
-    - predicted_mask: Predicted segmentation mask
-    """
-    # Minimal, robust display
-    image = np.array(image)
-    gt = np.array(ground_truth_mask)
-    pred = np.array(predicted_mask)
-
-    # Normalize image to uint8 [0,255]
-    if image.dtype != np.uint8:
-        im = image.astype(np.float32)
-        im = (im - im.min()) / max(1e-6, (im.max() - im.min()))
-        image_disp = (im * 255).astype(np.uint8)
-    else:
-        image_disp = image
-
-    # If channels-first, convert to HWC
-    if image_disp.ndim == 3 and image_disp.shape[0] in (1, 3) and image_disp.shape[0] != image_disp.shape[2]:
-        image_disp = np.transpose(image_disp, (1, 2, 0))
-
-    if image_disp.ndim == 2:
-        image_disp = cv2.cvtColor(image_disp, cv2.COLOR_GRAY2RGB)
-
-    # Prepare binary masks (0 or 255)
-    if gt.ndim == 3:
-        gt = gt[:, :, 0]
-    if pred.ndim == 3:
-        pred = pred[:, :, 0]
-    gt_mask = (gt > (0 if gt.max() <= 1 else (gt.max() / 2))).astype(np.uint8) * 255
-    pred_mask = (pred > (0 if pred.max() <= 1 else (pred.max() / 2))).astype(np.uint8) * 255
-
-    H, W = image_disp.shape[:2]
-    if gt_mask.shape != (H, W):
-        gt_mask = cv2.resize(gt_mask, (W, H), interpolation=cv2.INTER_NEAREST)
-    if pred_mask.shape != (H, W):
-        pred_mask = cv2.resize(pred_mask, (W, H), interpolation=cv2.INTER_NEAREST)
-
-    # Overlay prediction in red
-    overlay = image_disp.copy()
-    red = np.array([255, 0, 0], dtype=np.uint8)
-    idx = pred_mask > 127
-    overlay[idx] = (overlay[idx].astype(np.float32) * 0.5 + red.astype(np.float32) * 0.5).astype(np.uint8)
-
-    fig, axes = plt.subplots(1, 4, figsize=(18, 5))
-    axes[0].imshow(image_disp); axes[0].set_title('Image'); axes[0].axis('off')
-    axes[1].imshow(gt_mask, cmap='gray'); axes[1].set_title('GT'); axes[1].axis('off')
-    axes[2].imshow(pred_mask, cmap='gray'); axes[2].set_title('Pred'); axes[2].axis('off')
-    axes[3].imshow(overlay); axes[3].set_title('Overlay'); axes[3].axis('off')
-    plt.tight_layout(); plt.show()
-
+# module-level device (default CPU)
+DEVICE = torch.device('cpu')
 
 def test(args, test_loader, model, criterion):
     """
@@ -97,56 +40,77 @@ def test(args, test_loader, model, criterion):
     #evaluation or test mode
     model.eval()
     total_batches = len(test_loader)
-    all_preds = []
-    all_labels = []
-    data_list=[]
 
-     # Initialize variables to measure latency and throughput
+    # use incremental confusion matrix to avoid large memory usage
+    ConfM = ConfusionMatrix(args.classes)
+
+    # Initialize variables to measure latency and throughput
     total_inference_time = 0
     num_images = 0
 
-     # FLOPS Calculation (using the first batch)
-    input_sample, _, _, _ = next(iter(test_loader))
-    input_sample = Variable(input_sample).cuda()  # Change to `.cuda()` if using GPU
-    macs, params = profile(model, inputs=(input_sample,))
-    flops = macs * 2  # MACs are half of FLOPs
-    print(f"FLOPs: {flops:.2e}, Params: {params}")
+    # FLOPS Calculation - skip on CPU unless explicitly requested
+    if getattr(args, 'profile', False) or DEVICE.type == 'cuda':
+        try:
+            input_sample, _, _, _ = next(iter(test_loader))
+            input_sample = input_sample.to(DEVICE)
+            macs, params = profile(model, inputs=(input_sample,))
+            flops = macs * 2  # MACs are half of FLOPs
+            print(f"FLOPs: {flops:.2e}, Params: {params}")
+        except Exception as e:
+            print("Profiling skipped (error):", e)
+    else:
+        print("Profiling skipped on CPU (use --profile True to force)")
     
     for i, (input, label, size, name) in enumerate(test_loader):
-        input_var = input.cuda()   # Variable wrapper not needed in PyTorch >0.4
+        input_var = input.to(DEVICE)    # move to device
+        
         start_time = time.time()
-        
-        output = model(input_var)  # (B, C, H, W)
-        torch.cuda.synchronize()
-        
+        output = model(input_var)       # (B, C, H, W)
+        if DEVICE.type == 'cuda':
+            torch.cuda.synchronize()
         end_time = time.time()
+
+        # ---- Process prediction & free output to reduce peak memory usage ---- #
+        pred = output[0].cpu().detach().numpy()                 # (C, H, W)
+        pred = np.argmax(pred, axis=0).astype(np.uint8)         # (H, W)
+        del output
+        torch.cuda.empty_cache() if DEVICE.type == 'cuda' else None
+        gc.collect()
+
+        # ---- Process ground truth ---- #
+        gt = label[0].cpu().numpy().astype(np.uint8)            # (H, W)
+
         latency = end_time - start_time
         total_inference_time += latency
         num_images += input.size(0)
 
-        # ---- Process ground truth ----
-        gt = label[0].cpu().numpy().astype(np.uint8)   # (H, W)
+        # For metrics: build per-sample confusion matrix and add to global ConfM
+        gt_flat = gt.flatten().astype(np.int64)
+        pred_flat = pred.flatten().astype(np.int64)
 
-        # ---- Process prediction ----
-        pred = output[0].cpu().detach().numpy()        # (C, H, W)
-        pred = np.argmax(pred, axis=0).astype(np.uint8)  # (H, W)
-
-        # For metrics
-        data_list.append([gt.flatten(), pred.flatten()])
-        all_preds.extend(pred.flatten())
-        all_labels.extend(gt.flatten())
+        # mask out invalid labels
+        valid_mask = (gt_flat >= 0) & (gt_flat < args.classes) & (pred_flat >= 0) & (pred_flat < args.classes)
+        if valid_mask.any():
+            idx = gt_flat[valid_mask] * args.classes + pred_flat[valid_mask]
+            counts = np.bincount(idx, minlength=args.classes * args.classes)
+            m = counts.reshape((args.classes, args.classes)).astype(np.float64)
+            ConfM.addM(m)
 
         # ---- Visualization ----
-        if i < 11:
+        if (i < 4) and args.no_visual is False:
             image = input[0].cpu().numpy().transpose(1, 2, 0)  # (C,H,W) → (H,W,C)
             print(f"Visualizing: Image: {name[0]}, Mask: {name[0]}")
             visualize_prediction(image, gt, pred, name[0])
+        
+        print(f"Processed image {i}")
 
         
-    meanIoU, per_class_iu= get_iou(data_list, args.classes)
-    precision, recall, f1_score, accuracy = calculate_metrics(all_labels, all_preds)
-################################################
-     # Calculate FPS and Throughput
+    # compute meanIoU from confusion matrix
+    meanIoU, per_class_iu, M = ConfM.jaccard()
+    # compute precision/recall/f1/accuracy from confusion matrix
+    precision, recall, f1_score, accuracy = calculate_metrics(ConfM.M)
+
+    # Calculate FPS and Throughput
     fps = num_images / total_inference_time
     throughput = fps  # For single-threaded inference
 
@@ -178,19 +142,32 @@ def test_model(args):
     
     print(args)
     global network_type
-     
-    if args.cuda:
+
+    # choose device
+    global DEVICE
+    DEVICE = torch.device('cuda' if (args.cuda and torch.cuda.is_available()) else 'cpu')
+    if DEVICE.type == 'cuda':
         print("=====> Use gpu id: '{}'".format(args.gpus))
         os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
-        if not torch.cuda.is_available():
-            raise Exception("No GPU found or Wrong gpu id, please run without --cuda")
+
+    # Limit CPU threads to avoid oversubscription on laptops
+    if DEVICE.type == 'cpu':
+        os.environ.setdefault('OMP_NUM_THREADS', '1')
+        os.environ.setdefault('MKL_NUM_THREADS', '1')
+        torch.set_num_threads(1)
+        torch.set_num_interop_threads(1)
     
     args.seed = random.randint(1, 10000)
     print("Random Seed: ", args.seed)
     torch.manual_seed(args.seed)
-    if args.cuda:
-        torch.cuda.manual_seed(args.seed) 
-    cudnn.enabled = True
+
+    # set CUDA seed only if GPU is selected
+    if DEVICE.type == 'cuda':
+        torch.cuda.manual_seed(args.seed)
+    cudnn.enabled = (DEVICE.type == 'cuda')
+
+    print("=====> DEVICE status")
+    print(f"Running on device: {DEVICE}")
 
     M = args.M
     N = args.N
@@ -198,39 +175,42 @@ def test_model(args):
     model = CGNet.CGNET(classes= args.classes, M= M, N= N)
 
     network_type="CGNet"
-    print("=====> current architeture:  CGNet_M%sN%s"%(M, N))
+    print("=====> Current Architecture:  CGNet_M%sN%s"%(M, N))
     total_paramters = netParams(model)
-    print("the number of parameters: " + str(total_paramters))
+    print("The number of parameters: " + str(total_paramters))
     print("data['classWeights']: ", datas['classWeights'])
     weight = torch.from_numpy(datas['classWeights'])
     print("=====> Dataset statistics")
-    print("mean and std: ", datas['mean'], datas['std'])
+    print("Mean & Std: ", datas['mean'], datas['std'])
     
     # define optimization criteria
     criteria = CrossEntropyLoss2d(weight, args.ignore_label)
-    if args.cuda:
-        model = model.cuda()
-        criteria = criteria.cuda()
+
+    # move model and criteria to chosen device
+    model = model.to(DEVICE)
+    criteria = criteria.to(DEVICE)
     
-    #load test set
+    # load test set
     train_transform= transforms.Compose([
         transforms.ToTensor()])
+    loader_workers = args.num_workers if DEVICE.type == 'cuda' else 0
+    pin_mem = True if DEVICE.type == 'cuda' else False
     testLoader = data.DataLoader(KvasirSEG_ClinicDB_Val_dataset(args.data_dir, args.test_data_list,  mean= datas['mean']),
-                                  batch_size = args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
+                                  batch_size = args.batch_size, shuffle=True, num_workers=loader_workers, pin_memory=pin_mem, drop_last=True)
 
     if args.resume:
         if os.path.isfile(args.resume):
-            print("=====> loading checkpoint '{}'".format(args.resume))
-            checkpoint = torch.load(args.resume) ## map_location=torch.device('cpu'))  #### comment the map_location during the GPU usage ###
+            print("=====> Loading checkpoint '{}'".format(args.resume))
+            checkpoint = torch.load(args.resume, map_location=DEVICE)
             #model.load_state_dict(convert_state_dict(checkpoint['model']))
             model.load_state_dict(checkpoint['model'])
         else:
-            print("=====> no checkpoint found at '{}'".format(args.resume))
+            print("=====> No checkpoint found at '{}'".format(args.resume))
     
     cudnn.benchmark= True
 
-    print("=====> beginning test")
-    print("length of test set:", len(testLoader))
+    print("=====> Beginning test")
+    print("Length of testing set:", len(testLoader))
     mIOU_val, per_class_iu, precision, recall, f1_score, accuracy = test(args, testLoader, model, criteria)
     
     print("mIoU : ", mIOU_val)
@@ -259,7 +239,9 @@ if __name__ == '__main__':
                          help = "storing classes weights, mean and std")
     parser.add_argument('--M', type = int, default = 3,  help = "the number of block in stage 2")
     parser.add_argument('--N', type = int, default = 21, help = "the number of block in stage 3")
-    parser.add_argument('--cuda', type = bool, default = True, help = "running on CPU or GPU")
+    parser.add_argument('--cuda', type = bool, default = False, help = "running on CPU or GPU")
+    parser.add_argument('--profile', type = bool, default = False, help = 'run FLOPS profile (Only on GPU or if explicitly enabled)')
+    parser.add_argument('--no_visual', type = bool, default = False, help = 'disable matplotlib visualization during test')
     parser.add_argument("--gpus", type = str, default = "0",  help = "gpu ids (default: 0)")
     parser.add_argument("--gpu_nums",  type = int, default=1 , help="the number of gpu")
     
