@@ -101,4 +101,4 @@ python Kvasir_CVCclinic_test.py --test_data_list ./dataset/Polyp_processed_1_0_d
 ``` 
 
 
-*⚠️ This work is not directly recommended for clinical deployments until significant approvals and validations.*
+*⚠️ This work is currently under review at a IEEE Conference*
