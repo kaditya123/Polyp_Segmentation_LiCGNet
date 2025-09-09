@@ -72,6 +72,8 @@ python Kvasir_CVCclinic_train.py --dataset KvasirSeg_CVCClinic_(train) --train_t
 python Kvasir_CVCclinic_train.py --dataset KvasirSeg_CVCClinic_(train+val) --train_type ontrainval --train_data_list ./dataset/Polyp_processed_1_0_data/Polyp_train&val_list.txt --max_epochs 250
 ```
 ## Model Inferencing
+### The inferencing works good with the lowest configuration as, 4GB VRAM GPU, 8GB RAM laptop CPU, 8GB RAM Raspberry Pi.
+
 1) Testing the model on *Kvasir-SEG* testing set
 ```
 python Kvasir_CVCclinic_test.py --test_data_list ./dataset/Polyp_processed_1_0_data/TESTING_Image+Mask/Polyp_Kvasir_SEG_test_list.txt --resume ./checkpoint/KvasirSeg_CVCClinic_(train)/CGNet_M3N21bs8gpu1_ontrain/model_250.pth
