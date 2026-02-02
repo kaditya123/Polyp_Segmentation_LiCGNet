@@ -1,4 +1,4 @@
-# LiCGNet: Lightweight Context Guided Network for Polyp Segmentation on Edge Devices
+# Lightweight Context Guided Network for Polyp Segmentation on Edge Devices
 
 ## Introduction 
 
