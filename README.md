@@ -101,4 +101,4 @@ python Kvasir_CVCclinic_test.py --test_data_list ./dataset/Polyp_processed_1_0_d
 ``` 
 
 
-*⚠️ This work is Accepted at an IEEE Conference*
+*⚠️ This paper is Accepted by IEEE ASPCON Conference 2025 and currently under publication in IEEE Xplore*
