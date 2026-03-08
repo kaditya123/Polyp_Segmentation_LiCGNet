@@ -1,5 +1,8 @@
 # Lightweight Context Guided Network for Polyp Segmentation on Edge Devices
 
+## Published at IEEE Conference on Applied Signal Processing (ASPCON) 2025
+Paper: https://doi.org/10.1109/ASPCON66877.2025.11389655
+
 ## Introduction 
 
 This research presents a lightweight and deployable AI model for real-time polyp segmentation, designed specifically for edge devices in resource-limited clinical settings. By enabling fast, and accurate segmentation, it supports early diagnosis of colorectal cancer which is highly generizable on multiple polyp datasets (considered 5 datasets in this experiment), a crucial factor in improving patient survival rates. Leveraging the Context-Guided Network (CGNet), the model achieves 98.86% accuracy and 86.02% mIoU on the CVC-300 dataset. It is optimized for deployment on devices like Raspberry Pi 5, and supports FP16 quantization, drastically reducing model size by half with negligible accuracy loss. Achieving up to 94 FPS on GPU, this work marks a step forward in democratizing AI for real-time, point-of-care diagnostics.
@@ -99,6 +102,3 @@ python Kvasir_CVCclinic_test.py --test_data_list ./dataset/Polyp_processed_1_0_d
 ```
 python Kvasir_CVCclinic_test.py --test_data_list ./dataset/Polyp_processed_1_0_data/TESTING_Image+Mask/Polyp_ETIS_LaribPolypDB_test_list.txt --resume ./checkpoint/KvasirSeg_CVCClinic_(train)/CGNet_M3N21bs8gpu1_ontrain/model_250.pth
 ``` 
-
-
-*⚠️ This paper is Accepted by IEEE ASPCON Conference 2025 and currently under publication in IEEE Xplore*
