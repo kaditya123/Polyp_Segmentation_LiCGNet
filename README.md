@@ -74,28 +74,28 @@ python Kvasir_CVCclinic_train.py --dataset KvasirSeg_CVCClinic_(train+val) --tra
 ## Model Inferencing
 1) Testing the model on *Kvasir-SEG* testing set
 ```
-python Kvasir_CVCclinic_test.py --test_data_list ./dataset/Polyp_processed_1_0_data/TESTING_Image+Mask/Polyp_Kvasir_SEG_test_list.txt --resume ./checkpoint/KvasirSeg_CVCClinic_(train)/CGNet_M3N21bs8gpu1_ontrain/model_250.pth
+python Kvasir_CVCclinic_inference.py --test_data_list ./dataset/Polyp_processed_1_0_data/TESTING_Image+Mask/Polyp_Kvasir_SEG_test_list.txt --resume ./checkpoint/KvasirSeg_CVCClinic_(train)/CGNet_M3N21bs8gpu1_ontrain/model_250.pth
 ```
 Set ```--resume ./checkpoint/KvasirSeg_CVCClinic_(train+val)/CGNet_M3N21bs8gpu1_ontrain/model_250.pth``` if training is done 'train + val' dataset.
 
 2) Testing the model on *CVC-ClinicDB* testing set
 ```
-python Kvasir_CVCclinic_test.py --test_data_list ./dataset/Polyp_processed_1_0_data/TESTING_Image+Mask/Polyp_CVC_ClinicDB_test_list.txt --resume ./checkpoint/KvasirSeg_CVCClinic_(train)/CGNet_M3N21bs8gpu1_ontrain/model_250.pth
+python Kvasir_CVCclinic_inference.py --test_data_list ./dataset/Polyp_processed_1_0_data/TESTING_Image+Mask/Polyp_CVC_ClinicDB_test_list.txt --resume ./checkpoint/KvasirSeg_CVCClinic_(train)/CGNet_M3N21bs8gpu1_ontrain/model_250.pth
 ```
 
 3) Testing the model on *CVC-ColonDB* testing set
 ```
-python Kvasir_CVCclinic_test.py --test_data_list ./dataset/Polyp_processed_1_0_data/TESTING_Image+Mask/Polyp_CVC_ColonDB_test_list.txt --resume ./checkpoint/KvasirSeg_CVCClinic_(train)/CGNet_M3N21bs8gpu1_ontrain/model_250.pth
+python Kvasir_CVCclinic_inference.py --test_data_list ./dataset/Polyp_processed_1_0_data/TESTING_Image+Mask/Polyp_CVC_ColonDB_test_list.txt --resume ./checkpoint/KvasirSeg_CVCClinic_(train)/CGNet_M3N21bs8gpu1_ontrain/model_250.pth
 ```
 
 4) Testing the model on *CVC-300* testing set
 ```
-python Kvasir_CVCclinic_test.py --test_data_list ./dataset/Polyp_processed_1_0_data/TESTING_Image+Mask/Polyp_CVC_300_test_list.txt --resume ./checkpoint/KvasirSeg_CVCClinic_(train)/CGNet_M3N21bs8gpu1_ontrain/model_250.pth
+python Kvasir_CVCclinic_inference.py --test_data_list ./dataset/Polyp_processed_1_0_data/TESTING_Image+Mask/Polyp_CVC_300_test_list.txt --resume ./checkpoint/KvasirSeg_CVCClinic_(train)/CGNet_M3N21bs8gpu1_ontrain/model_250.pth
 ```
 
 5) Testing the model on *ETIS-Larib* testing set
 ```
-python Kvasir_CVCclinic_test.py --test_data_list ./dataset/Polyp_processed_1_0_data/TESTING_Image+Mask/Polyp_ETIS_LaribPolypDB_test_list.txt --resume ./checkpoint/KvasirSeg_CVCClinic_(train)/CGNet_M3N21bs8gpu1_ontrain/model_250.pth
+python Kvasir_CVCclinic_inference.py --test_data_list ./dataset/Polyp_processed_1_0_data/TESTING_Image+Mask/Polyp_ETIS_LaribPolypDB_test_list.txt --resume ./checkpoint/KvasirSeg_CVCClinic_(train)/CGNet_M3N21bs8gpu1_ontrain/model_250.pth
 ``` 
 
 
