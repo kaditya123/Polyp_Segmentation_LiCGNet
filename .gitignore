@@ -2,3 +2,5 @@
 # Ignore the dataset directory 
 .env
 .venv
+model_1.pth
+FP16_inferencing.py
