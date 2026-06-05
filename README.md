@@ -1,4 +1,7 @@
-# LiCGNet: Lightweight Context Guided Network for Polyp Segmentation on Edge Devices
+# Lightweight Context Guided Network for Polyp Segmentation on Edge Devices
+
+## Published at IEEE Conference on Applied Signal Processing (ASPCON) 2025
+Paper: https://doi.org/10.1109/ASPCON66877.2025.11389655
 
 ## Introduction 
 
@@ -72,6 +75,8 @@ python Kvasir_CVCclinic_train.py --dataset KvasirSeg_CVCClinic_(train) --train_t
 python Kvasir_CVCclinic_train.py --dataset KvasirSeg_CVCClinic_(train+val) --train_type ontrainval --train_data_list ./dataset/Polyp_processed_1_0_data/Polyp_train&val_list.txt --max_epochs 250
 ```
 ## Model Inferencing
+### Acceptable inferencing performance on systems with as lowest configuration as, 4GB VRAM GPU, 8GB RAM laptop CPU and 8GB RAM Raspberry Pi.
+
 1) Testing the model on *Kvasir-SEG* testing set
 ```
 python Kvasir_CVCclinic_inference.py --test_data_list ./dataset/Polyp_processed_1_0_data/TESTING_Image+Mask/Polyp_Kvasir_SEG_test_list.txt --resume ./checkpoint/KvasirSeg_CVCClinic_(train)/CGNet_M3N21bs8gpu1_ontrain/model_250.pth
@@ -97,6 +102,3 @@ python Kvasir_CVCclinic_inference.py --test_data_list ./dataset/Polyp_processed_
 ```
 python Kvasir_CVCclinic_inference.py --test_data_list ./dataset/Polyp_processed_1_0_data/TESTING_Image+Mask/Polyp_ETIS_LaribPolypDB_test_list.txt --resume ./checkpoint/KvasirSeg_CVCClinic_(train)/CGNet_M3N21bs8gpu1_ontrain/model_250.pth
 ``` 
-
-
-*⚠️ This work is not directly recommended for clinical deployments until significant approvals and validations.*
