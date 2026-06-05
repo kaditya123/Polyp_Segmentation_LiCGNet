@@ -1,6 +1,6 @@
-# Lightweight Context Guided Network for Polyp Segmentation on Edge Devices
+# Lightweight Context Guided Network for Polyp Segmentation on Edge Devices | IEEE ASPCON 2025
 
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/874b4e31-554a-4dae-827b-0ad67abac279" />
+<img width="1682" height="966" alt="Beige Pastel Minimalist Thesis Defense Presentation" src="https://github.com/user-attachments/assets/1402297f-a03a-4829-af7f-2b6379a8ee30" />
 
 ## Published at IEEE Conference on Applied Signal Processing (ASPCON) 2025
 Paper: https://doi.org/10.1109/ASPCON66877.2025.11389655
